@@ -1,17 +1,19 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// Vertex Shader: Handles particle position, size attenuation, and mouse interaction
+// Vertex Shader: Handles particle position, size attenuation, and explosion logic
 const vertexShader = `
   uniform float uTime;
   uniform vec3 uMouse;
   uniform float uHover;
+  uniform float uExpansion; // 0.0 = Tree, 1.0 = Exploded Sphere
   
   attribute float aRandom;
   attribute float aSize;
   attribute vec3 aColor;
   attribute float aBrightness; 
+  attribute vec3 aExplodedPos; // The target position when exploded
   
   varying vec3 vColor;
   varying float vAlpha;
@@ -20,12 +22,21 @@ const vertexShader = `
   void main() {
     vColor = aColor;
     vBrightness = aBrightness;
-    vec3 pos = position;
-
-    // Gentle rotation logic
-    float angle = uTime * 0.1 + position.y * 0.1;
     
-    // Manual rotation matrix around Y axis
+    // 1. Interpolate between Tree Shape and Exploded Shape
+    // Smoothstep for smoother animation start/end
+    float t = smoothstep(0.0, 1.0, uExpansion);
+    vec3 pos = mix(position, aExplodedPos, t);
+
+    // 2. Rotation Logic
+    // We apply rotation to the interpolated position so the sphere spins too
+    float angle = uTime * 0.1 + pos.y * 0.1;
+    
+    // Reduce rotation speed slightly when exploded to make it look like a drifting galaxy
+    if (uExpansion > 0.5) {
+       angle = uTime * 0.05 + pos.y * 0.05;
+    }
+    
     float c = cos(angle);
     float s = sin(angle);
     float x = pos.x * c - pos.z * s;
@@ -33,18 +44,20 @@ const vertexShader = `
     pos.x = x;
     pos.z = z;
     
-    // Organic movement
-    // Reduced movement for structural elements (garlands) to keep shape
+    // 3. Organic movement (Sway)
+    // Reduce sway when exploded (spheres don't sway like trees)
     float movementIntensity = (aBrightness > 8.0) ? 0.005 : 0.02; 
-    pos.x += sin(uTime + position.y) * movementIntensity;
-    pos.z += cos(uTime + position.y) * movementIntensity;
+    float swayFactor = 1.0 - t; // 1.0 when tree, 0.0 when exploded
+    
+    pos.x += sin(uTime + pos.y) * movementIntensity * swayFactor;
+    pos.z += cos(uTime + position.y) * movementIntensity * swayFactor;
 
-    // Interaction Logic: Repel from mouse
+    // 4. Interaction Logic: Repel from mouse
+    // Keep this active in both states for fun
     float dist = distance(pos, uMouse);
-    float repelRadius = 1.5; 
+    float repelRadius = 1.5 + (uExpansion * 2.0); // Larger interact radius when exploded
     float force = smoothstep(repelRadius, 0.0, dist);
     
-    // Push particles away from the "mouse" point in 3D space
     vec3 dir = normalize(pos - uMouse);
     pos += dir * force * 0.05 * uHover; 
 
@@ -56,7 +69,6 @@ const vertexShader = `
     gl_PointSize = size * (300.0 / -mvPosition.z);
     
     // Twinkle alpha
-    // Make brighter particles (garland/star) twinkle faster
     float twinkleSpeed = (aBrightness > 5.0) ? 5.0 : 3.0;
     vAlpha = 0.6 + 0.4 * sin(uTime * twinkleSpeed + aRandom * 10.0);
   }
@@ -76,7 +88,7 @@ const fragmentShader = `
     float glow = 1.0 - (r * 2.0);
     glow = pow(glow, 1.5);
 
-    // Apply brightness multiplier to the color directly for "bloom" feel in AdditiveBlending
+    // Apply brightness multiplier
     vec3 finalColor = vColor * vBrightness;
     
     gl_FragColor = vec4(finalColor, vAlpha * glow);
@@ -86,29 +98,43 @@ const fragmentShader = `
 export const ChristmasTree: React.FC = () => {
   const mesh = useRef<THREE.Points>(null);
   const { viewport, mouse, camera } = useThree();
+  const [isExploded, setIsExploded] = useState(false);
   
+  // Double click handler
+  useEffect(() => {
+    const handleDoubleClick = () => {
+      setIsExploded(prev => !prev);
+    };
+    
+    window.addEventListener('dblclick', handleDoubleClick);
+    return () => {
+      window.removeEventListener('dblclick', handleDoubleClick);
+    };
+  }, []);
+
   // Create shader uniforms
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uMouse: { value: new THREE.Vector3(0, 0, 0) },
       uHover: { value: 1.0 },
+      uExpansion: { value: 0.0 }, // Controlled by animation loop
     }),
     []
   );
 
   // Generate Geometry Data
-  const { positions, colors, sizes, randoms, brightness } = useMemo(() => {
+  const { positions, colors, sizes, randoms, brightness, explodedPositions } = useMemo(() => {
     // Counts
     const treeCount = 45000; 
-    const ribbonCount = 5000; // Pink ambient cloud
-    // Significantly increased garland count to support larger volume while maintaining density
+    const ribbonCount = 5000; 
     const garlandCount = 30000; 
-    const starCount = 800; // Reduced from 2000 to prevent overexposure
+    const starCount = 800; 
     
     const totalCount = treeCount + ribbonCount + garlandCount + starCount;
 
     const positions = new Float32Array(totalCount * 3);
+    const explodedPositions = new Float32Array(totalCount * 3); // New Attribute
     const colors = new Float32Array(totalCount * 3);
     const sizes = new Float32Array(totalCount);
     const randoms = new Float32Array(totalCount);
@@ -120,16 +146,40 @@ export const ChristmasTree: React.FC = () => {
     const colorYellow = new THREE.Color('#ffff00'); 
     const colorPink = new THREE.Color('#ff4090');
     const colorGold = new THREE.Color('#ffaa00');
-    const colorGoldLight = new THREE.Color('#ffcc66'); // Lighter gold for fog variance
+    const colorGoldLight = new THREE.Color('#ffcc66');
     const colorWhite = new THREE.Color('#ffffff');
 
     let idx = 0;
+
+    // Helper to generate a random point inside a sphere (Explosion shape)
+    // Center (0, 2, 0)
+    const setExplodedPos = (index: number) => {
+      // Reduced from 6.5 to 3.25 (Half size)
+      const radiusMax = 3.25; 
+      
+      // Cubic root for uniform distribution in sphere volume
+      const r = Math.cbrt(Math.random()) * radiusMax; 
+      
+      // Random direction
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+      
+      explodedPositions[index * 3] = x;
+      explodedPositions[index * 3 + 1] = y + 2.0; // Center vertical offset
+      explodedPositions[index * 3 + 2] = z;
+    };
 
     // 1. Generate Regular Conical Tree Body
     for (let i = 0; i < treeCount; i++) {
       const normalizedIndex = i / treeCount;
       const yProgress = Math.pow(normalizedIndex, 3.0); 
-      const y = -3 + yProgress * 8; // Height: -3 to 5
+      const y = -3 + yProgress * 8; 
       
       const maxRadius = 3.5 * (1 - yProgress);
       const r = Math.sqrt(Math.random()) * maxRadius;
@@ -139,18 +189,21 @@ export const ChristmasTree: React.FC = () => {
       positions[idx * 3 + 1] = y;
       positions[idx * 3 + 2] = r * Math.sin(theta);
 
+      // Tree parts explode
+      setExplodedPos(idx);
+
       // Colors & Brightness Logic
       const rand = Math.random();
       let c;
       let size;
       let b;
 
-      if (rand > 0.30) { // 70% Yellow/Green Mix
+      if (rand > 0.30) { 
         c = Math.random() > 0.5 ? colorYellow : colorGreen; 
         size = 0.25; 
         b = 4.0;
       } 
-      else { // Ornaments
+      else { 
         c = rand > 0.15 ? colorRed : colorBlue; 
         size = 0.45; 
         b = 6.0; 
@@ -165,16 +218,25 @@ export const ChristmasTree: React.FC = () => {
       idx++;
     }
 
-    // 2. Pink Ambient Cloud (Subtler now)
+    // 2. Pink Ambient Cloud
+    // THESE SHOULD NOT EXPLODE. They should stay in place.
     for (let i = 0; i < ribbonCount; i++) {
       const y = -4.0 + Math.random() * 12.0;
       const maxR = 12.0; 
       const r = Math.sqrt(Math.random()) * maxR;
       const theta = Math.random() * Math.PI * 2;
       
-      positions[idx * 3] = r * Math.cos(theta);
+      const x = r * Math.cos(theta);
+      const z = r * Math.sin(theta);
+
+      positions[idx * 3] = x;
       positions[idx * 3 + 1] = y;
-      positions[idx * 3 + 2] = r * Math.sin(theta);
+      positions[idx * 3 + 2] = z;
+      
+      // STATIC: Exploded position is exactly the same as original position
+      explodedPositions[idx * 3] = x;
+      explodedPositions[idx * 3 + 1] = y;
+      explodedPositions[idx * 3 + 2] = z;
 
       colors[idx * 3] = colorPink.r;
       colors[idx * 3 + 1] = colorPink.g;
@@ -186,31 +248,25 @@ export const ChristmasTree: React.FC = () => {
       idx++;
     }
 
-    // 3. Golden Garland (Volumetric Fog Band)
+    // 3. Golden Garland
     const spiralTurns = 6.5;
     for (let i = 0; i < garlandCount; i++) {
-      const p = i / garlandCount; // 0 to 1
+      const p = i / garlandCount; 
       
-      // Calculate Spiral Center Line
       const yCenter = 5.0 - p * 8.0; 
       const baseRadius = 3.5 * (p); 
       const theta = p * Math.PI * 2 * spiralTurns;
       
-      // Convert Spiral Center to Cartesian
       const xCenter = baseRadius * Math.cos(theta);
       const zCenter = baseRadius * Math.sin(theta);
 
-      // Volumetric Fog Logic:
-      // Instead of a thin line, we scatter points in a 3D cloud around the center line.
-      // Spread is much larger now (0.5 to 0.7) to create "volume"
       const spread = 0.5 + Math.random() * 0.2; 
       
-      // Random offset in a sphere
       const u = Math.random();
       const v = Math.random();
       const thetaOff = 2 * Math.PI * u;
       const phiOff = Math.acos(2 * v - 1);
-      const rOff = Math.cbrt(Math.random()) * spread; // Uniform-ish distribution inside sphere
+      const rOff = Math.cbrt(Math.random()) * spread;
 
       const xOffset = rOff * Math.sin(phiOff) * Math.cos(thetaOff);
       const yOffset = rOff * Math.sin(phiOff) * Math.sin(thetaOff);
@@ -220,13 +276,14 @@ export const ChristmasTree: React.FC = () => {
       positions[idx * 3 + 1] = yCenter + yOffset;
       positions[idx * 3 + 2] = zCenter + zOffset;
 
-      // Color Variance for Fog Texture
+      // Garland explodes
+      setExplodedPos(idx);
+
       const c = Math.random() > 0.4 ? colorGold : colorGoldLight;
       colors[idx * 3] = c.r;
       colors[idx * 3 + 1] = c.g;
       colors[idx * 3 + 2] = c.b;
 
-      // Slightly smaller individual particles for mist effect, but high brightness
       sizes[idx] = 0.2 + Math.random() * 0.15; 
       brightnessArr[idx] = 6.5; 
       randoms[idx] = Math.random();
@@ -250,6 +307,9 @@ export const ChristmasTree: React.FC = () => {
       positions[idx * 3] = x;
       positions[idx * 3 + 1] = y + 5.2; 
       positions[idx * 3 + 2] = z;
+      
+      // Star explodes
+      setExplodedPos(idx);
 
       const c = Math.random() > 0.3 ? colorWhite : colorGold;
       
@@ -258,19 +318,20 @@ export const ChristmasTree: React.FC = () => {
       colors[idx * 3 + 2] = c.b;
 
       sizes[idx] = 0.3 + Math.random() * 0.4;
-      brightnessArr[idx] = 8.0 + Math.random() * 4.0; // Reduced max brightness
+      brightnessArr[idx] = 8.0 + Math.random() * 4.0; 
       randoms[idx] = Math.random();
       idx++;
     }
 
-    return { positions, colors, sizes, randoms, brightness: brightnessArr };
+    return { positions, colors, sizes, randoms, brightness: brightnessArr, explodedPositions };
   }, []);
 
   // Animate
   useFrame((state) => {
     if (mesh.current) {
       const { clock, pointer } = state;
-      mesh.current.material.uniforms.uTime.value = clock.getElapsedTime();
+      const uTime = clock.getElapsedTime();
+      mesh.current.material.uniforms.uTime.value = uTime;
 
       // Mouse interaction
       const vector = new THREE.Vector3(pointer.x, pointer.y, 0.5);
@@ -283,8 +344,19 @@ export const ChristmasTree: React.FC = () => {
 
       const distFromCenter = pointer.length();
       const active = 1.0 - THREE.MathUtils.smoothstep(distFromCenter, 0.6, 0.95);
-      
       mesh.current.material.uniforms.uHover.value = active;
+      
+      // Explosion Animation Logic (Lerp)
+      // Smoothly interpolate current value towards target (0 or 1)
+      const targetExpansion = isExploded ? 1.0 : 0.0;
+      const currentExpansion = mesh.current.material.uniforms.uExpansion.value;
+      
+      // Lerp speed: 0.05 is somewhat slow, 0.1 is standard.
+      mesh.current.material.uniforms.uExpansion.value = THREE.MathUtils.lerp(
+        currentExpansion,
+        targetExpansion,
+        0.05
+      );
     }
   });
 
@@ -295,6 +367,12 @@ export const ChristmasTree: React.FC = () => {
           attach="attributes-position"
           count={positions.length / 3}
           array={positions}
+          itemSize={3}
+        />
+        <bufferAttribute
+          attach="attributes-aExplodedPos"
+          count={explodedPositions.length / 3}
+          array={explodedPositions}
           itemSize={3}
         />
         <bufferAttribute
