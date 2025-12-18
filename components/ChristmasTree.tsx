@@ -105,17 +105,7 @@ export const ChristmasTree: React.FC<ChristmasTreeProps> = ({ isExploded, onTogg
   const mesh = useRef<THREE.Points>(null);
   const { camera } = useThree();
   
-  // Double click handler
-  useEffect(() => {
-    const handleDoubleClick = () => {
-      onToggleExplode();
-    };
-    
-    window.addEventListener('dblclick', handleDoubleClick);
-    return () => {
-      window.removeEventListener('dblclick', handleDoubleClick);
-    };
-  }, [onToggleExplode]);
+  // Double click handler is now managed in App.tsx with touch support
 
   const uniforms = useMemo(
     () => ({

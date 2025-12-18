@@ -90,13 +90,22 @@ const SafeImage: React.FC<{ url: string; scale: [number, number] }> = ({ url, sc
     );
   }
 
-  if (!texture) return null;
-
+  // Always render a placeholder to ensure the slot is visible even when loading
   return (
-    <mesh scale={[scale[0], scale[1], 1]}>
-      <planeGeometry />
-      <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} />
-    </mesh>
+    <>
+      {!texture && (
+        <mesh scale={[scale[0], scale[1], 1]}>
+          <planeGeometry />
+          <meshBasicMaterial color="#333333" transparent opacity={0.3} />
+        </mesh>
+      )}
+      {texture && (
+        <mesh scale={[scale[0], scale[1], 1]}>
+          <planeGeometry />
+          <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </>
   );
 };
 
