@@ -12,6 +12,7 @@ import Image4 from '../Image/4.jpg';
 import Image5 from '../Image/5.jpg';
 import Image6 from '../Image/6.jpg';
 import Image7 from '../Image/7.jpg';
+import Image8 from '../Image/8.jpg';
 
 // 图片URL映射
 const IMAGE_URLS = {
@@ -21,7 +22,8 @@ const IMAGE_URLS = {
   4: Image4,
   5: Image5,
   6: Image6,
-  7: Image7
+  7: Image7,
+  8: Image8
 };
 
 // 详细元数据配置
@@ -32,7 +34,8 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
   4: { title: "望月", subtitle: "Lunar Beauty", symbol: "🌕" },
   5: { title: "璀璨烟花", subtitle: "Grand Fireworks I", symbol: "🎆" },
   6: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" },
-  7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" }
+  7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" },
+  8: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" }
 };
 
 /**
@@ -41,7 +44,7 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
  */
 const useImageDiscovery = (maxSearch: number = 20) => {
   // 直接返回实际存在的图片ID，使用静态导入的图片
-  return [1, 2, 3, 4, 5, 6, 7];
+  return [1, 2, 3, 4, 5, 6, 7, 8];
 };
 
 const SafeImage: React.FC<{ url: string; scale: [number, number] }> = ({ url, scale }) => {
