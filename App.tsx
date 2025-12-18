@@ -94,7 +94,7 @@ const App: React.FC = () => {
           maxPolarAngle={Math.PI / 1.8}
           minDistance={5}
           maxDistance={40} // Allow zooming out further to see the huge tree
-          autoRotate={!isExploded && !activeImageData} // Only stop rotating when viewing an image
+          autoRotate={!isExploded} // Only stop rotating when exploded
           autoRotateSpeed={0.5}
           enabled={true} // Always allow the user to move the camera if they want
         />
