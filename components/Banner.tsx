@@ -1,18 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const Banner: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(true);
-
-  useEffect(() => {
-    // Auto collapse after 5 seconds, then expand again after 15 seconds
-    const collapseTimer = setTimeout(() => setIsExpanded(false), 5000);
-    const expandTimer = setTimeout(() => setIsExpanded(true), 20000);
-
-    return () => {
-      clearTimeout(collapseTimer);
-      clearTimeout(expandTimer);
-    };
-  }, []);
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
