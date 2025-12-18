@@ -1,4 +1,3 @@
-
 import React, { Suspense, useEffect, useState, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -11,17 +10,27 @@ import { Ground } from './components/Ground';
 import { ImageGallery } from './components/ImageGallery';
 import { ImageViewer } from './components/ImageViewer';
 
+/**
+ * Component to handle initial camera positioning based on screen size.
+ * Runs only once to avoid resetting the user's adjusted view.
+ */
 const CameraAdjuster: React.FC = () => {
   const { camera, size } = useThree();
   const initialized = useRef(false);
 
   useEffect(() => {
     if (initialized.current) return;
+
     const aspect = size.width / size.height;
     const isPortrait = aspect < 1;
-    const targetZ = isPortrait ? 20 : 15;
-    camera.position.set(0, 2, targetZ);
+    
+    // Set initial position based on device orientation
+    const targetZ = isPortrait ? 18 : 12;
+    const targetY = 2;
+
+    camera.position.set(0, targetY, targetZ);
     camera.updateProjectionMatrix();
+    
     initialized.current = true;
   }, [size, camera]);
 
@@ -51,18 +60,21 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full bg-[#020408]">
+    <div className="relative w-full h-full bg-black">
       <Canvas
-        camera={{ position: [0, 2, 15], fov: 45 }}
+        // Default position, will be overridden by CameraAdjuster once
+        camera={{ position: [0, 2, 12], fov: 45 }}
         dpr={[1, 2]} 
         className="w-full h-full"
         style={{ touchAction: 'none' }}
       >
-        <color attach="background" args={['#010306']} />
+        <color attach="background" args={['#050b14']} />
+        
         <CameraAdjuster />
+
         <Suspense fallback={null}>
-          <ChristmasTree isExploded={isExploded} onToggleExplode={() => {}} />
-          <Snow count={8000} />
+          <ChristmasTree isExploded={isExploded} onToggleExplode={() => setIsExploded(prev => !prev)} />
+          <Snow count={7500} />
           <Fireflies />
           <Ground />
         </Suspense>
@@ -71,19 +83,20 @@ const App: React.FC = () => {
         <Suspense fallback={null}>
           <ImageGallery isExploded={isExploded} onSelectImage={setActiveImageData} />
         </Suspense>
-        
-        <ambientLight intensity={0.7} />
+
+        <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         
         <OrbitControls 
           enablePan={false} 
           enableZoom={true}
           minPolarAngle={Math.PI / 3} 
-          maxPolarAngle={Math.PI / 1.7}
-          minDistance={8}
-          maxDistance={35} 
-          autoRotate={!isExploded && !activeImageData} 
-          autoRotateSpeed={0.3}
+          maxPolarAngle={Math.PI / 1.8}
+          minDistance={5}
+          maxDistance={40} // Allow zooming out further to see the huge tree
+          autoRotate={!isExploded && !activeImageData} // Only stop rotating when viewing an image
+          autoRotateSpeed={0.5}
+          enabled={true} // Always allow the user to move the camera if they want
         />
       </Canvas>
       
