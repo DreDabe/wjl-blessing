@@ -24,23 +24,9 @@ const useImageDiscovery = (maxSearch: number = 20) => {
   const [ids, setIds] = useState<number[]>([]); // Initial empty, only show actual found images
   
   useEffect(() => {
-    async function scan() {
-      const found: number[] = [];
-      // 探测 1-maxSearch
-      for (let i = 1; i <= maxSearch; i++) {
-        const path = `Image/${i}.jpg`;
-        const exists = await new Promise<boolean>((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve(true);
-          img.onerror = () => resolve(false);
-          img.src = path;
-        });
-        if (exists) found.push(i);
-      }
-      // Always update ids, even if found is empty
-      setIds(found);
-    }
-    scan();
+    // 直接返回实际存在的图片ID，不使用异步检测（可能在生产环境中无法工作）
+    // 根据实际Image文件夹中的照片数量设置
+    setIds([1, 2, 3, 4, 5, 6, 7]);
   }, [maxSearch]);
 
   return ids;
@@ -191,7 +177,7 @@ export const ImageGallery: React.FC<{
       const r = treeRadiusAtY * (0.5 + Math.random() * 0.45); 
       const angle = Math.random() * Math.PI * 2;
       // 使用相对路径 Image/
-      const localUrl = `Image/${id}.jpg`;
+      const localUrl = `/Image/${id}.jpg`;
       
       return { 
         id: `img-${i}`,
