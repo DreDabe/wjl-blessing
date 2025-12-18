@@ -36,7 +36,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ data, onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl p-6 animate-in fade-in duration-300 ui-element"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6 animate-in fade-in duration-300 ui-element"
       onClick={onClose}
     >
       <div 
