@@ -4,6 +4,26 @@ import { useFrame } from '@react-three/fiber';
 import { Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 
+// 静态导入图片，让Vite处理路径
+import Image1 from '../Image/1.jpg';
+import Image2 from '../Image/2.jpg';
+import Image3 from '../Image/3.jpg';
+import Image4 from '../Image/4.jpg';
+import Image5 from '../Image/5.jpg';
+import Image6 from '../Image/6.jpg';
+import Image7 from '../Image/7.jpg';
+
+// 图片URL映射
+const IMAGE_URLS = {
+  1: Image1,
+  2: Image2,
+  3: Image3,
+  4: Image4,
+  5: Image5,
+  6: Image6,
+  7: Image7
+};
+
 // 详细元数据配置
 const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: string }> = {
   1: { title: "操场晚霞", subtitle: "Sunset over the Field", symbol: "🌇" },
@@ -12,8 +32,7 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
   4: { title: "望月", subtitle: "Lunar Beauty", symbol: "🌕" },
   5: { title: "璀璨烟花", subtitle: "Grand Fireworks I", symbol: "🎆" },
   6: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" },
-  7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" },
-  8: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" }
+  7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" }
 };
 
 /**
@@ -21,15 +40,8 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
  * 不再阻塞渲染，而是逐步发现图片
  */
 const useImageDiscovery = (maxSearch: number = 20) => {
-  const [ids, setIds] = useState<number[]>([]); // Initial empty, only show actual found images
-  
-  useEffect(() => {
-    // 直接返回实际存在的图片ID，不使用异步检测（可能在生产环境中无法工作）
-    // 根据实际Image文件夹中的照片数量设置
-    setIds([1, 2, 3, 4, 5, 6, 7]);
-  }, [maxSearch]);
-
-  return ids;
+  // 直接返回实际存在的图片ID，使用静态导入的图片
+  return [1, 2, 3, 4, 5, 6, 7];
 };
 
 const SafeImage: React.FC<{ url: string; scale: [number, number] }> = ({ url, scale }) => {
@@ -51,16 +63,18 @@ const SafeImage: React.FC<{ url: string; scale: [number, number] }> = ({ url, sc
     if (!loadStarted) return;
 
     const loader = new THREE.TextureLoader();
+    console.log(`Loading image: ${url}`);
     loader.load(
       url,
       (tex) => {
+        console.log(`Successfully loaded: ${url}`);
         tex.colorSpace = THREE.SRGBColorSpace;
         setTexture(tex);
         setFailed(false);
       },
       undefined,
-      () => {
-        console.warn(`Failed to load: ${url}`);
+      (error) => {
+        console.error(`Failed to load: ${url}`, error);
         setFailed(true);
       }
     );
@@ -177,11 +191,11 @@ export const ImageGallery: React.FC<{
       const r = treeRadiusAtY * (0.5 + Math.random() * 0.45); 
       const angle = Math.random() * Math.PI * 2;
       // 使用相对路径 Image/
-      const localUrl = `/Image/${id}.jpg`;
+      const localUrl = IMAGE_URLS[id as keyof typeof IMAGE_URLS];
       
       return { 
         id: `img-${i}`,
-        localUrl, 
+        localUrl,
         meta: { ...meta, id },
         position: [r * Math.cos(angle), y, r * Math.sin(angle)] as [number, number, number]
       };
