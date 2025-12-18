@@ -33,8 +33,8 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
   3: { title: "月下剪影", subtitle: "Moonlight Silhouette", symbol: "🌙" },
   4: { title: "望月", subtitle: "Lunar Beauty", symbol: "🌕" },
   5: { title: "璀璨烟花", subtitle: "Grand Fireworks I", symbol: "🎆" },
-  6: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" },
-  7: { title: "成功的条件", subtitle: "Dimensions of Success", symbol: "📊" },
+  6: { title: "成功的条件", subtitle: "Dimensions of Success", symbol: "📊" },
+  7: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" },
   8: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" }
 };
 
@@ -126,7 +126,8 @@ const GalleryItem: React.FC<{
 
   const explodedPos = useMemo(() => {
     const dir = new THREE.Vector3(...position).normalize();
-    return new THREE.Vector3(...position).add(dir.multiplyScalar(4.0 + Math.random() * 2.5));
+    // Increase the scalar multiplier to make photos more spread out
+    return new THREE.Vector3(...position).add(dir.multiplyScalar(8.0 + Math.random() * 4.0));
   }, [position]);
 
   useFrame((state, delta) => {
