@@ -12,11 +12,27 @@ interface ImageViewerProps {
 export const ImageViewer: React.FC<ImageViewerProps> = ({ data, onClose }) => {
   const [error, setError] = useState(false);
   
+  // 上岸祝福语列表
+  const blessings = [
+    "当你感到紧张、心跳加速时，其实是身体给自己加油的掌声！",
+    "人就是这样的，想来想去，犹豫来犹豫去，觉得自己还没准备好，勇气没有攒够，其实只要迈出去第一步，你就会发现一切早就已经准备好了！",
+    "真正的勇气是怀揣着恐惧，依旧勇往直前！",
+    "愿你成为自己的太阳，无需借谁的光！",
+    "注定要去的地方，多晚都有光！",
+    "放弃不难，但坚持肯定不简单，贵在坚持，难在坚持，成在坚持！",
+    "你一定要走，走到灯火通明！",
+    "在你坚持不懈的努力下，会有始料不及的运气和突如其来的惊喜！"
+  ];
+  
   useEffect(() => {
     setError(false);
   }, [data]);
 
   if (!data) return null;
+  
+  // 根据图片ID选择对应的祝福语
+  const blessingIndex = (data.meta.id - 1) % blessings.length;
+  const currentBlessing = blessings[blessingIndex];
 
   return (
     <div 
@@ -64,7 +80,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ data, onClose }) => {
           </p>
           <div className="h-[1px] w-16 bg-gray-100 mx-auto mb-6" />
           <p className="text-gray-400 italic text-sm font-light">
-            “ 每一段记忆，都是最闪耀的星辰 ”
+            “ {currentBlessing} ”
           </p>
         </div>
       </div>
