@@ -9,6 +9,7 @@ import { Fireflies } from './components/Fireflies';
 import { Ground } from './components/Ground';
 import { ImageGallery } from './components/ImageGallery';
 import { ImageViewer } from './components/ImageViewer';
+import Banner from './components/Banner';
 
 /**
  * Component to handle initial camera positioning based on screen size.
@@ -61,6 +62,9 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-black">
+      {/* Banner component at the top */}
+      <Banner />
+      
       <Canvas
         // Default position, will be overridden by CameraAdjuster once
         camera={{ position: [0, 2, 12], fov: 45 }}
