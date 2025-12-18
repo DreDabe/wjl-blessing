@@ -34,7 +34,7 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
   4: { title: "望月", subtitle: "Lunar Beauty", symbol: "🌕" },
   5: { title: "璀璨烟花", subtitle: "Grand Fireworks I", symbol: "🎆" },
   6: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" },
-  7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" },
+  7: { title: "成功的条件", subtitle: "Dimensions of Success", symbol: "📊" },
   8: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" }
 };
 
@@ -132,15 +132,19 @@ const GalleryItem: React.FC<{
   useFrame((state, delta) => {
     if (!groupRef.current) return;
     
-    // When image viewer is open, freeze all gallery items
-    if (isImageViewerOpen) {
+    // For exploded state, we want to freeze the position once they're in place
+    // This ensures photos stay in fixed positions after exploding
+    if (isExploded) {
+      // Only update scale on hover, not position
+      const s = hovered ? 3.5 : 1.0; 
+      groupRef.current.scale.lerp(new THREE.Vector3(s, s, s), delta * 8);
       return;
     }
     
-    const target = isExploded ? explodedPos : new THREE.Vector3(...position);
+    // For non-exploded state, continue normal animation
+    const target = new THREE.Vector3(...position);
     groupRef.current.position.lerp(target, delta * 3);
-    const s = (isExploded && hovered) ? 3.5 : 1.0; 
-    groupRef.current.scale.lerp(new THREE.Vector3(s, s, s), delta * 8);
+    groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), delta * 8);
   });
 
   return (
