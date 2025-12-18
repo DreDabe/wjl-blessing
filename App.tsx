@@ -81,7 +81,7 @@ const App: React.FC = () => {
         
         {/* ImageGallery will load after main scene components */}
         <Suspense fallback={null}>
-          <ImageGallery isExploded={isExploded} onSelectImage={setActiveImageData} />
+          <ImageGallery isExploded={isExploded} onSelectImage={setActiveImageData} isImageViewerOpen={!!activeImageData} />
         </Suspense>
 
         <ambientLight intensity={0.5} />

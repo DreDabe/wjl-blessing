@@ -33,9 +33,9 @@ const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: s
   3: { title: "月下剪影", subtitle: "Moonlight Silhouette", symbol: "🌙" },
   4: { title: "望月", subtitle: "Lunar Beauty", symbol: "🌕" },
   5: { title: "璀璨烟花", subtitle: "Grand Fireworks I", symbol: "🎆" },
-  6: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" },
+  6: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" },
   7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" },
-  8: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" }
+  8: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" }
 };
 
 /**
@@ -116,9 +116,10 @@ const GalleryItem: React.FC<{
   localUrl: string; 
   position: [number, number, number]; 
   isExploded: boolean; 
+  isImageViewerOpen: boolean;
   meta: any;
   onSelect: (url: string, meta: any) => void 
-}> = ({ localUrl, position, isExploded, meta, onSelect }) => {
+}> = ({ localUrl, position, isExploded, isImageViewerOpen, meta, onSelect }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const fruitScale = 0.16; 
@@ -130,6 +131,12 @@ const GalleryItem: React.FC<{
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
+    
+    // When image viewer is open, freeze all gallery items
+    if (isImageViewerOpen) {
+      return;
+    }
+    
     const target = isExploded ? explodedPos : new THREE.Vector3(...position);
     groupRef.current.position.lerp(target, delta * 3);
     const s = (isExploded && hovered) ? 3.5 : 1.0; 
@@ -172,8 +179,9 @@ const GalleryItem: React.FC<{
 
 export const ImageGallery: React.FC<{ 
   isExploded: boolean; 
-  onSelectImage: (data: { url: string, meta: any }) => void 
-}> = ({ isExploded, onSelectImage }) => {
+  onSelectImage: (data: { url: string, meta: any }) => void;
+  isImageViewerOpen: boolean;
+}> = ({ isExploded, onSelectImage, isImageViewerOpen }) => {
   const ids = useImageDiscovery(20);
   
   const items = useMemo(() => {
@@ -212,6 +220,7 @@ export const ImageGallery: React.FC<{
           key={item.id} 
           {...item} 
           isExploded={isExploded} 
+          isImageViewerOpen={isImageViewerOpen}
           onSelect={(url, meta) => onSelectImage({ url, meta })} 
         />
       ))}
