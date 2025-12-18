@@ -1,0 +1,208 @@
+
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Billboard } from '@react-three/drei';
+import * as THREE from 'three';
+
+// 详细元数据配置
+const IMAGE_DETAILS: Record<number, { title: string; subtitle: string; symbol: string }> = {
+  1: { title: "操场晚霞", subtitle: "Sunset over the Field", symbol: "🌇" },
+  2: { title: "城市落日", subtitle: "City Golden Hour", symbol: "🏙️" },
+  3: { title: "月下剪影", subtitle: "Moonlight Silhouette", symbol: "🌙" },
+  4: { title: "望月", subtitle: "Lunar Beauty", symbol: "🌕" },
+  5: { title: "璀璨烟花", subtitle: "Grand Fireworks I", symbol: "🎆" },
+  6: { title: "星空烟火", subtitle: "Grand Fireworks II", symbol: "🎇" },
+  7: { title: "成功的维度", subtitle: "Dimensions of Success", symbol: "📊" },
+  8: { title: "优秀的定义", subtitle: "Definition of Excellence", symbol: "⭕" }
+};
+
+/**
+ * 核心 Hook：自动探测 Image 文件夹中的照片
+ * 不再阻塞渲染，而是逐步发现图片
+ */
+const useImageDiscovery = (maxSearch: number = 20) => {
+  const [ids, setIds] = useState<number[]>([]); // Initial empty, only show actual found images
+  
+  useEffect(() => {
+    async function scan() {
+      const found: number[] = [];
+      // 探测 1-maxSearch
+      for (let i = 1; i <= maxSearch; i++) {
+        const path = `Image/${i}.jpg`;
+        const exists = await new Promise<boolean>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+          img.src = path;
+        });
+        if (exists) found.push(i);
+      }
+      // Always update ids, even if found is empty
+      setIds(found);
+    }
+    scan();
+  }, [maxSearch]);
+
+  return ids;
+};
+
+const SafeImage: React.FC<{ url: string; scale: [number, number] }> = ({ url, scale }) => {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [loadStarted, setLoadStarted] = useState(false);
+
+  // Delay image loading to ensure it happens after main scene components
+  useEffect(() => {
+    // Start loading after a 1000ms delay
+    const timer = setTimeout(() => {
+      setLoadStarted(true);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!loadStarted) return;
+
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      url,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        setTexture(tex);
+        setFailed(false);
+      },
+      undefined,
+      () => {
+        console.warn(`Failed to load: ${url}`);
+        setFailed(true);
+      }
+    );
+    return () => texture?.dispose();
+  }, [url, loadStarted]);
+
+  if (failed) {
+    return (
+      <mesh scale={[scale[0], scale[1], 1]}>
+        <planeGeometry />
+        <meshBasicMaterial color="#eeeeee" transparent opacity={0.5} />
+      </mesh>
+    );
+  }
+
+  if (!texture) return null;
+
+  return (
+    <mesh scale={[scale[0], scale[1], 1]}>
+      <planeGeometry />
+      <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} />
+    </mesh>
+  );
+};
+
+const GalleryItem: React.FC<{ 
+  localUrl: string; 
+  position: [number, number, number]; 
+  isExploded: boolean; 
+  meta: any;
+  onSelect: (url: string, meta: any) => void 
+}> = ({ localUrl, position, isExploded, meta, onSelect }) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+  const fruitScale = 0.16; 
+
+  const explodedPos = useMemo(() => {
+    const dir = new THREE.Vector3(...position).normalize();
+    return new THREE.Vector3(...position).add(dir.multiplyScalar(4.0 + Math.random() * 2.5));
+  }, [position]);
+
+  useFrame((state, delta) => {
+    if (!groupRef.current) return;
+    const target = isExploded ? explodedPos : new THREE.Vector3(...position);
+    groupRef.current.position.lerp(target, delta * 3);
+    const s = (isExploded && hovered) ? 3.5 : 1.0; 
+    groupRef.current.scale.lerp(new THREE.Vector3(s, s, s), delta * 8);
+  });
+
+  return (
+    <group 
+      ref={groupRef} 
+      onClick={(e) => { 
+        e.stopPropagation(); 
+        if (isExploded) onSelect(localUrl, meta); 
+      }}
+      onPointerOver={() => isExploded && setHovered(true)} 
+      onPointerOut={() => setHovered(false)}
+    >
+      <Billboard>
+        {/* 底片/相框 - 始终显示 */}
+        <mesh position={[0, 0, -0.01]}>
+          <planeGeometry args={[1.3 * fruitScale, 1.6 * fruitScale]} />
+          <meshBasicMaterial color="white" transparent opacity={isExploded ? 1.0 : 0.6} />
+        </mesh>
+
+        {/* 图片内容 */}
+        <group position={[0, 0.02 * fruitScale, 0]}>
+          <SafeImage url={localUrl} scale={[1.15 * fruitScale, 1.35 * fruitScale]} />
+        </group>
+
+        {/* 爆炸态的光晕效果 */}
+        {isExploded && (
+          <mesh position={[0, 0, -0.02]}>
+            <circleGeometry args={[1.6 * fruitScale, 16]} />
+            <meshBasicMaterial color={hovered ? "#fffbaa" : "#ffdd44"} transparent opacity={hovered ? 0.4 : 0.1} />
+          </mesh>
+        )}
+      </Billboard>
+    </group>
+  );
+};
+
+export const ImageGallery: React.FC<{ 
+  isExploded: boolean; 
+  onSelectImage: (data: { url: string, meta: any }) => void 
+}> = ({ isExploded, onSelectImage }) => {
+  const ids = useImageDiscovery(20);
+  
+  const items = useMemo(() => {
+    // Only generate slots for actual found images
+    if (ids.length === 0) return [];
+    
+    return Array.from({ length: ids.length }).map((_, i) => {
+      const id = ids[i];
+      const meta = IMAGE_DETAILS[id] || { 
+        title: `回忆片段 ${id}`, 
+        subtitle: `Memory Fragment ${id}`, 
+        symbol: "✨" 
+      };
+      
+      const y = -2.3 + Math.random() * 4.2; 
+      const yProgress = (y + 3) / 8.5;
+      const treeRadiusAtY = 3.8 * (1.1 - yProgress);
+      const r = treeRadiusAtY * (0.5 + Math.random() * 0.45); 
+      const angle = Math.random() * Math.PI * 2;
+      // 使用相对路径 Image/
+      const localUrl = `Image/${id}.jpg`;
+      
+      return { 
+        id: `img-${i}`,
+        localUrl, 
+        meta: { ...meta, id },
+        position: [r * Math.cos(angle), y, r * Math.sin(angle)] as [number, number, number]
+      };
+    });
+  }, [ids]);
+
+  return (
+    <group>
+      {items.map((item) => (
+        <GalleryItem 
+          key={item.id} 
+          {...item} 
+          isExploded={isExploded} 
+          onSelect={(url, meta) => onSelectImage({ url, meta })} 
+        />
+      ))}
+    </group>
+  );
+};
