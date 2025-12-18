@@ -1,3 +1,4 @@
+
 import React, { useMemo, useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -342,7 +343,9 @@ export const ChristmasTree: React.FC<ChristmasTreeProps> = ({ isExploded, onTogg
     if (mesh.current) {
       const { clock, pointer } = state;
       const uTime = clock.getElapsedTime();
-      mesh.current.material.uniforms.uTime.value = uTime;
+      // Cast to ShaderMaterial to access uniforms
+      const material = mesh.current.material as THREE.ShaderMaterial;
+      material.uniforms.uTime.value = uTime;
 
       // Mouse interaction
       const vector = new THREE.Vector3(pointer.x, pointer.y, 0.5);
@@ -351,18 +354,18 @@ export const ChristmasTree: React.FC<ChristmasTreeProps> = ({ isExploded, onTogg
       const distance = -camera.position.z / dir.z; 
       const pos = camera.position.clone().add(dir.multiplyScalar(distance));
       
-      mesh.current.material.uniforms.uMouse.value.copy(pos);
+      material.uniforms.uMouse.value.copy(pos);
 
       const distFromCenter = pointer.length();
       const active = 1.0 - THREE.MathUtils.smoothstep(distFromCenter, 0.6, 0.95);
-      mesh.current.material.uniforms.uHover.value = active;
+      material.uniforms.uHover.value = active;
       
       // Explosion Animation Logic (Lerp)
       const targetExpansion = isExploded ? 1.0 : 0.0;
-      const currentExpansion = mesh.current.material.uniforms.uExpansion.value;
+      const currentExpansion = material.uniforms.uExpansion.value;
       
       // Faster lerp (0.05) for a snappier, more energetic explosion
-      mesh.current.material.uniforms.uExpansion.value = THREE.MathUtils.lerp(
+      material.uniforms.uExpansion.value = THREE.MathUtils.lerp(
         currentExpansion,
         targetExpansion,
         0.05
